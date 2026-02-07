@@ -8,6 +8,7 @@ use crate::normalize_path;
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum Service {
 	Sftp(ServiceSftp),
+	OpenDal(ServiceOpenDal),
 }
 
 impl TryFrom<&'static Service> for &'static ServiceSftp {
@@ -16,6 +17,18 @@ impl TryFrom<&'static Service> for &'static ServiceSftp {
 	fn try_from(value: &'static Service) -> Result<Self, Self::Error> {
 		match value {
 			Service::Sftp(p) => Ok(p),
+			_ => Err("not an sftp service"),
+		}
+	}
+}
+
+impl TryFrom<&'static Service> for &'static ServiceOpenDal {
+	type Error = &'static str;
+
+	fn try_from(value: &'static Service) -> Result<Self, Self::Error> {
+		match value {
+			Service::OpenDal(p) => Ok(p),
+			_ => Err("not an opendal service"),
 		}
 	}
 }
@@ -24,6 +37,7 @@ impl Service {
 	pub(super) fn reshape(&mut self) -> io::Result<()> {
 		match self {
 			Self::Sftp(p) => p.reshape(),
+			Self::OpenDal(_) => Ok(()),
 		}
 	}
 }
@@ -40,6 +54,14 @@ pub struct ServiceSftp {
 	pub key_passphrase: Option<String>,
 	#[serde(default)]
 	pub identity_agent: PathBuf,
+}
+
+// --- OpenDal
+#[derive(Deserialize, PartialEq, Eq, Serialize)]
+pub struct ServiceOpenDal {
+	pub backend: String,
+	#[serde(default)]
+	pub options: std::collections::HashMap<String, String>,
 }
 
 impl ServiceSftp {

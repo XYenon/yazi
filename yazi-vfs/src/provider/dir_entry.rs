@@ -6,6 +6,7 @@ use yazi_shared::{path::PathBufDyn, strand::StrandCow, url::UrlBuf};
 pub enum DirEntry {
 	Local(yazi_fs::provider::local::DirEntry),
 	Sftp(super::sftp::DirEntry),
+	OpenDal(super::opendal::DirEntry),
 }
 
 impl FileHolder for DirEntry {
@@ -13,6 +14,7 @@ impl FileHolder for DirEntry {
 		match self {
 			Self::Local(entry) => entry.file_type().await,
 			Self::Sftp(entry) => entry.file_type().await,
+			Self::OpenDal(entry) => Ok(entry.cha().mode.into()),
 		}
 	}
 
@@ -20,6 +22,7 @@ impl FileHolder for DirEntry {
 		match self {
 			Self::Local(entry) => entry.metadata().await,
 			Self::Sftp(entry) => entry.metadata().await,
+			Self::OpenDal(entry) => Ok(entry.cha()),
 		}
 	}
 
@@ -27,6 +30,7 @@ impl FileHolder for DirEntry {
 		match self {
 			Self::Local(entry) => entry.name(),
 			Self::Sftp(entry) => entry.name(),
+			Self::OpenDal(entry) => entry.name(),
 		}
 	}
 
@@ -34,6 +38,7 @@ impl FileHolder for DirEntry {
 		match self {
 			Self::Local(entry) => entry.path(),
 			Self::Sftp(entry) => entry.path(),
+			Self::OpenDal(entry) => entry.path(),
 		}
 	}
 
@@ -41,6 +46,7 @@ impl FileHolder for DirEntry {
 		match self {
 			Self::Local(entry) => entry.url(),
 			Self::Sftp(entry) => entry.url(),
+			Self::OpenDal(entry) => entry.url(),
 		}
 	}
 }

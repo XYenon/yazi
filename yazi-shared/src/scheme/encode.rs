@@ -38,7 +38,7 @@ impl<'a> Encode<'a> {
 				match self.0.0.kind() {
 					SchemeKind::Regular => Ok(()),
 					SchemeKind::Search | SchemeKind::Archive => w!(0, 0),
-					SchemeKind::Sftp => {
+					SchemeKind::Sftp | SchemeKind::OpenDal => {
 						w!(self.0.0.loc().name().is_some() as usize, self.0.0.loc().name().is_some() as usize)
 					}
 				}
@@ -58,6 +58,9 @@ impl Display for Encode<'_> {
 				write!(f, "archive://{}{}/", Self::domain(domain), self.ports())
 			}
 			Url::Sftp { domain, .. } => write!(f, "sftp://{}{}/", Self::domain(domain), self.ports()),
+			Url::OpenDal { domain, .. } => {
+				write!(f, "opendal://{}{}/", Self::domain(domain), self.ports())
+			}
 		}
 	}
 }

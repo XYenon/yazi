@@ -1,6 +1,6 @@
 use std::io;
 
-use yazi_fs::provider::{Attrs, FileBuilder};
+use yazi_fs::provider::{Attrs, FileBuilder, Provider};
 use yazi_shared::{scheme::SchemeKind, url::AsUrl};
 
 #[derive(Clone, Copy, Default)]
@@ -50,6 +50,19 @@ impl FileBuilder for Gate {
 				Err(io::Error::new(io::ErrorKind::Unsupported, "Unsupported filesystem: archive"))?
 			}
 			SchemeKind::Sftp => self.build::<super::sftp::Gate>().open(url).await?.into(),
+			SchemeKind::OpenDal => {
+				let provider = super::opendal::OpenDal::from_url(url).await?;
+				let mut file = if (self.create || self.create_new) && self.truncate {
+					provider.create().await?
+				} else {
+					provider.open().await?
+				};
+
+				if self.append {
+					tokio::io::AsyncSeekExt::seek(&mut file, io::SeekFrom::End(0)).await?;
+				}
+				file.into()
+			}
 		})
 	}
 

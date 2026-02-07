@@ -19,7 +19,7 @@ pub(super) async fn copy_impl(from: Url<'_>, to: Url<'_>, attrs: Attrs) -> io::R
 	let written = tokio::io::copy(&mut reader, &mut writer).await?;
 
 	writer.flush().await?;
-	writer.get_ref().set_attrs(attrs).await.ok();
+	writer.get_mut().set_attrs(attrs).await.ok();
 	writer.shutdown().await.ok();
 	Ok(written)
 }
@@ -37,10 +37,10 @@ pub(super) fn copy_with_progress_impl(
 	let (acc_, prog_tx_) = (acc.clone(), prog_tx.clone());
 	tokio::spawn(async move {
 		let init = async {
-			let src = provider::open(&*from).await?;
+			let mut src = provider::open(&*from).await?;
 			let cha = src.metadata().await?;
 
-			let dist = provider::create(&*to).await?;
+			let mut dist = provider::create(&*to).await?;
 			dist.set_len(cha.len).await?;
 			Ok((cha, Some(src), Some(dist)))
 		};

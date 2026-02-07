@@ -263,6 +263,7 @@ where
 		Url::Regular(_) | Url::Search { .. } => yazi_fs::provider::local::try_absolute(url),
 		Url::Archive { .. } => None, // TODO
 		Url::Sftp { .. } => crate::provider::sftp::try_absolute(url),
+		Url::OpenDal { .. } => Some(url),
 	}
 }
 

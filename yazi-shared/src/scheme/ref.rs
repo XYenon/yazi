@@ -8,6 +8,7 @@ pub enum SchemeRef<'a> {
 	Search { domain: &'a str, uri: usize, urn: usize },
 	Archive { domain: &'a str, uri: usize, urn: usize },
 	Sftp { domain: &'a str, uri: usize, urn: usize },
+	OpenDal { domain: &'a str, uri: usize, urn: usize },
 }
 
 impl Deref for SchemeRef<'_> {
@@ -20,6 +21,7 @@ impl Deref for SchemeRef<'_> {
 			Self::Search { .. } => &SchemeKind::Search,
 			Self::Archive { .. } => &SchemeKind::Archive,
 			Self::Sftp { .. } => &SchemeKind::Sftp,
+			Self::OpenDal { .. } => &SchemeKind::OpenDal,
 		}
 	}
 }
@@ -52,9 +54,10 @@ impl<'a> SchemeRef<'a> {
 	pub const fn domain(self) -> Option<&'a str> {
 		match self {
 			Self::Regular { .. } => None,
-			Self::Search { domain, .. } | Self::Archive { domain, .. } | Self::Sftp { domain, .. } => {
-				Some(domain)
-			}
+			Self::Search { domain, .. }
+			| Self::Archive { domain, .. }
+			| Self::Sftp { domain, .. }
+			| Self::OpenDal { domain, .. } => Some(domain),
 		}
 	}
 
@@ -65,6 +68,7 @@ impl<'a> SchemeRef<'a> {
 			Self::Search { .. } => SchemeKind::Search,
 			Self::Archive { .. } => SchemeKind::Archive,
 			Self::Sftp { .. } => SchemeKind::Sftp,
+			Self::OpenDal { .. } => SchemeKind::OpenDal,
 		}
 	}
 
@@ -75,6 +79,7 @@ impl<'a> SchemeRef<'a> {
 			Self::Search { uri, urn, .. } => (uri, urn),
 			Self::Archive { uri, urn, .. } => (uri, urn),
 			Self::Sftp { uri, urn, .. } => (uri, urn),
+			Self::OpenDal { uri, urn, .. } => (uri, urn),
 		}
 	}
 
@@ -84,6 +89,7 @@ impl<'a> SchemeRef<'a> {
 			Self::Search { domain, uri, urn } => Scheme::Search { domain: domain.intern(), uri, urn },
 			Self::Archive { domain, uri, urn } => Scheme::Archive { domain: domain.intern(), uri, urn },
 			Self::Sftp { domain, uri, urn } => Scheme::Sftp { domain: domain.intern(), uri, urn },
+			Self::OpenDal { domain, uri, urn } => Scheme::OpenDal { domain: domain.intern(), uri, urn },
 		}
 	}
 
@@ -93,6 +99,7 @@ impl<'a> SchemeRef<'a> {
 			Self::Search { domain, .. } => Self::Search { domain, uri, urn },
 			Self::Archive { domain, .. } => Self::Archive { domain, uri, urn },
 			Self::Sftp { domain, .. } => Self::Sftp { domain, uri, urn },
+			Self::OpenDal { domain, .. } => Self::OpenDal { domain, uri, urn },
 		}
 	}
 

@@ -18,6 +18,9 @@ impl FsScheme for SchemeRef<'_> {
 			Self::Sftp { domain, .. } => {
 				Some(Xdg::cache_dir().join(format!("sftp-{}", yazi_shared::scheme::Encode::domain(domain))))
 			}
+			Self::OpenDal { domain, .. } => {
+				Some(Xdg::cache_dir().join(format!("opendal-{}", yazi_shared::scheme::Encode::domain(domain))))
+			}
 		}
 	}
 }

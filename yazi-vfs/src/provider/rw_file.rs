@@ -6,6 +6,7 @@ use yazi_fs::provider::Attrs;
 pub enum RwFile {
 	Tokio(tokio::fs::File),
 	Sftp(Box<yazi_sftp::fs::File>),
+	OpenDal(Box<super::opendal::File>),
 }
 
 impl From<tokio::fs::File> for RwFile {
@@ -16,16 +17,21 @@ impl From<yazi_sftp::fs::File> for RwFile {
 	fn from(f: yazi_sftp::fs::File) -> Self { Self::Sftp(Box::new(f)) }
 }
 
+impl From<super::opendal::File> for RwFile {
+	fn from(f: super::opendal::File) -> Self { Self::OpenDal(Box::new(f)) }
+}
+
 impl RwFile {
 	// FIXME: path
-	pub async fn metadata(&self) -> io::Result<yazi_fs::cha::Cha> {
+	pub async fn metadata(&mut self) -> io::Result<yazi_fs::cha::Cha> {
 		Ok(match self {
 			Self::Tokio(f) => yazi_fs::cha::Cha::new("// FIXME", f.metadata().await?),
 			Self::Sftp(f) => super::sftp::Cha::try_from(("// FIXME".as_bytes(), &f.fstat().await?))?.0,
+			Self::OpenDal(f) => f.metadata().await?,
 		})
 	}
 
-	pub async fn set_attrs(&self, attrs: Attrs) -> io::Result<()> {
+	pub async fn set_attrs(&mut self, attrs: Attrs) -> io::Result<()> {
 		match self {
 			Self::Tokio(f) => {
 				let (perm, times) = (attrs.try_into(), attrs.try_into());
@@ -45,17 +51,19 @@ impl RwFile {
 					f.fsetstat(&attrs).await?;
 				}
 			}
+			Self::OpenDal(_) => {}
 		}
 
 		Ok(())
 	}
 
-	pub async fn set_len(&self, size: u64) -> io::Result<()> {
+	pub async fn set_len(&mut self, size: u64) -> io::Result<()> {
 		Ok(match self {
 			Self::Tokio(f) => f.set_len(size).await?,
 			Self::Sftp(f) => {
 				f.fsetstat(&yazi_sftp::fs::Attrs { size: Some(size), ..Default::default() }).await?
 			}
+			Self::OpenDal(_) => return Err(io::Error::new(io::ErrorKind::Unsupported, "set_len not supported")),
 		})
 	}
 }
@@ -70,6 +78,7 @@ impl AsyncRead for RwFile {
 		match &mut *self {
 			Self::Tokio(f) => Pin::new(f).poll_read(cx, buf),
 			Self::Sftp(f) => Pin::new(f).poll_read(cx, buf),
+			Self::OpenDal(f) => Pin::new(f).poll_read(cx, buf),
 		}
 	}
 }
@@ -80,6 +89,7 @@ impl AsyncSeek for RwFile {
 		match &mut *self {
 			Self::Tokio(f) => Pin::new(f).start_seek(position),
 			Self::Sftp(f) => Pin::new(f).start_seek(position),
+			Self::OpenDal(f) => Pin::new(f).start_seek(position),
 		}
 	}
 
@@ -91,6 +101,7 @@ impl AsyncSeek for RwFile {
 		match &mut *self {
 			Self::Tokio(f) => Pin::new(f).poll_complete(cx),
 			Self::Sftp(f) => Pin::new(f).poll_complete(cx),
+			Self::OpenDal(f) => Pin::new(f).poll_complete(cx),
 		}
 	}
 }
@@ -105,6 +116,7 @@ impl AsyncWrite for RwFile {
 		match &mut *self {
 			Self::Tokio(f) => Pin::new(f).poll_write(cx, buf),
 			Self::Sftp(f) => Pin::new(f).poll_write(cx, buf),
+			Self::OpenDal(f) => Pin::new(f).poll_write(cx, buf),
 		}
 	}
 
@@ -116,6 +128,7 @@ impl AsyncWrite for RwFile {
 		match &mut *self {
 			Self::Tokio(f) => Pin::new(f).poll_flush(cx),
 			Self::Sftp(f) => Pin::new(f).poll_flush(cx),
+			Self::OpenDal(f) => Pin::new(f).poll_flush(cx),
 		}
 	}
 
@@ -127,6 +140,7 @@ impl AsyncWrite for RwFile {
 		match &mut *self {
 			Self::Tokio(f) => Pin::new(f).poll_shutdown(cx),
 			Self::Sftp(f) => Pin::new(f).poll_shutdown(cx),
+			Self::OpenDal(f) => Pin::new(f).poll_shutdown(cx),
 		}
 	}
 
@@ -139,6 +153,7 @@ impl AsyncWrite for RwFile {
 		match &mut *self {
 			Self::Tokio(f) => Pin::new(f).poll_write_vectored(cx, bufs),
 			Self::Sftp(f) => Pin::new(f).poll_write_vectored(cx, bufs),
+			Self::OpenDal(f) => Pin::new(f).poll_write_vectored(cx, bufs),
 		}
 	}
 
@@ -147,6 +162,7 @@ impl AsyncWrite for RwFile {
 		match self {
 			Self::Tokio(f) => f.is_write_vectored(),
 			Self::Sftp(f) => f.is_write_vectored(),
+			Self::OpenDal(f) => f.is_write_vectored(),
 		}
 	}
 }

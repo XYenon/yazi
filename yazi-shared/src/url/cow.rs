@@ -11,11 +11,13 @@ pub enum UrlCow<'a> {
 	Search { loc: LocBuf, domain: SymbolCow<'a, str> },
 	Archive { loc: LocBuf, domain: SymbolCow<'a, str> },
 	Sftp { loc: LocBuf<typed_path::UnixPathBuf>, domain: SymbolCow<'a, str> },
+	OpenDal { loc: LocBuf<typed_path::UnixPathBuf>, domain: SymbolCow<'a, str> },
 
 	RegularRef(Loc<'a>),
 	SearchRef { loc: Loc<'a>, domain: SymbolCow<'a, str> },
 	ArchiveRef { loc: Loc<'a>, domain: SymbolCow<'a, str> },
 	SftpRef { loc: Loc<'a, &'a typed_path::UnixPath>, domain: SymbolCow<'a, str> },
+	OpenDalRef { loc: Loc<'a, &'a typed_path::UnixPath>, domain: SymbolCow<'a, str> },
 }
 
 // FIXME: remove
@@ -30,6 +32,7 @@ impl<'a> From<Url<'a>> for UrlCow<'a> {
 			Url::Search { loc, domain } => Self::SearchRef { loc, domain: domain.into() },
 			Url::Archive { loc, domain } => Self::ArchiveRef { loc, domain: domain.into() },
 			Url::Sftp { loc, domain } => Self::SftpRef { loc, domain: domain.into() },
+			Url::OpenDal { loc, domain } => Self::OpenDalRef { loc, domain: domain.into() },
 		}
 	}
 }
@@ -48,6 +51,7 @@ impl From<UrlBuf> for UrlCow<'_> {
 			UrlBuf::Search { loc, domain } => Self::Search { loc, domain: domain.into() },
 			UrlBuf::Archive { loc, domain } => Self::Archive { loc, domain: domain.into() },
 			UrlBuf::Sftp { loc, domain } => Self::Sftp { loc, domain: domain.into() },
+			UrlBuf::OpenDal { loc, domain } => Self::OpenDal { loc, domain: domain.into() },
 		}
 	}
 }
@@ -159,6 +163,10 @@ impl<'a> TryFrom<(SchemeCow<'a>, PathDyn<'a>)> for UrlCow<'a> {
 				loc:    Loc::with(path.as_unix()?, uri, urn)?,
 				domain: domain.ok_or_else(|| anyhow!("missing domain for sftp scheme"))?,
 			},
+			SchemeKind::OpenDal => Self::OpenDalRef {
+				loc:    Loc::with(path.as_unix()?, uri, urn)?,
+				domain: domain.ok_or_else(|| anyhow!("missing domain for opendal scheme"))?,
+			},
 		})
 	}
 }
@@ -184,6 +192,10 @@ impl<'a> TryFrom<(SchemeCow<'a>, PathBufDyn)> for UrlCow<'a> {
 				loc:    LocBuf::<typed_path::UnixPathBuf>::with(path.try_into()?, uri, urn)?,
 				domain: domain.ok_or_else(|| anyhow!("missing domain for sftp scheme"))?,
 			},
+			SchemeKind::OpenDal => Self::OpenDal {
+				loc:    LocBuf::<typed_path::UnixPathBuf>::with(path.try_into()?, uri, urn)?,
+				domain: domain.ok_or_else(|| anyhow!("missing domain for opendal scheme"))?,
+			},
 		})
 	}
 }
@@ -207,11 +219,16 @@ impl Hash for UrlCow<'_> {
 impl<'a> UrlCow<'a> {
 	pub fn is_owned(&self) -> bool {
 		match self {
-			Self::Regular(_) | Self::Search { .. } | Self::Archive { .. } | Self::Sftp { .. } => true,
+			Self::Regular(_)
+			| Self::Search { .. }
+			| Self::Archive { .. }
+			| Self::Sftp { .. }
+			| Self::OpenDal { .. } => true,
 			Self::RegularRef(_)
 			| Self::SearchRef { .. }
 			| Self::ArchiveRef { .. }
-			| Self::SftpRef { .. } => false,
+			| Self::SftpRef { .. }
+			| Self::OpenDalRef { .. } => false,
 		}
 	}
 
@@ -221,6 +238,7 @@ impl<'a> UrlCow<'a> {
 			Self::Search { loc, domain } => UrlBuf::Search { loc, domain: domain.into() },
 			Self::Archive { loc, domain } => UrlBuf::Archive { loc, domain: domain.into() },
 			Self::Sftp { loc, domain } => UrlBuf::Sftp { loc, domain: domain.into() },
+			Self::OpenDal { loc, domain } => UrlBuf::OpenDal { loc, domain: domain.into() },
 
 			Self::RegularRef(loc) => UrlBuf::Regular(loc.into()),
 			Self::SearchRef { loc, domain } => {
@@ -230,6 +248,9 @@ impl<'a> UrlCow<'a> {
 				UrlBuf::Archive { loc: loc.into(), domain: domain.into() }
 			}
 			Self::SftpRef { loc, domain } => UrlBuf::Sftp { loc: loc.into(), domain: domain.into() },
+			Self::OpenDalRef { loc, domain } => {
+				UrlBuf::OpenDal { loc: loc.into(), domain: domain.into() }
+			}
 		}
 	}
 
@@ -250,6 +271,10 @@ impl<'a> UrlCow<'a> {
 				SymbolCow::Borrowed(domain) => SchemeRef::Sftp { domain, uri, urn }.into(),
 				SymbolCow::Owned(domain) => Scheme::Sftp { domain, uri, urn }.into(),
 			},
+			Self::OpenDal { domain, .. } | Self::OpenDalRef { domain, .. } => match domain {
+				SymbolCow::Borrowed(domain) => SchemeRef::OpenDal { domain, uri, urn }.into(),
+				SymbolCow::Owned(domain) => Scheme::OpenDal { domain, uri, urn }.into(),
+			},
 		}
 	}
 
@@ -261,6 +286,9 @@ impl<'a> UrlCow<'a> {
 				UrlCow::Archive { loc, domain: domain.into_owned().into() }
 			}
 			UrlCow::Sftp { loc, domain } => UrlCow::Sftp { loc, domain: domain.into_owned().into() },
+			UrlCow::OpenDal { loc, domain } => {
+				UrlCow::OpenDal { loc, domain: domain.into_owned().into() }
+			}
 
 			UrlCow::RegularRef(loc) => UrlCow::Regular(loc.into()),
 			UrlCow::SearchRef { loc, domain } => {
@@ -271,6 +299,9 @@ impl<'a> UrlCow<'a> {
 			}
 			UrlCow::SftpRef { loc, domain } => {
 				UrlCow::Sftp { loc: loc.into(), domain: domain.into_owned().into() }
+			}
+			UrlCow::OpenDalRef { loc, domain } => {
+				UrlCow::OpenDal { loc: loc.into(), domain: domain.into_owned().into() }
 			}
 		}
 	}

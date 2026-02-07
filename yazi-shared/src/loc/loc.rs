@@ -156,6 +156,7 @@ where
 			SchemeKind::Search => Self::zeroed(path),
 			SchemeKind::Archive => Self::zeroed(path),
 			SchemeKind::Sftp => Self::bare(path),
+			SchemeKind::OpenDal => Self::bare(path),
 		}
 	}
 
