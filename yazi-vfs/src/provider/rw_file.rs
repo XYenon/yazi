@@ -6,6 +6,7 @@ use yazi_fs::provider::Attrs;
 pub enum RwFile {
 	Tokio(tokio::fs::File),
 	Sftp(Box<yazi_sftp::fs::File>),
+	Opendal(Box<super::opendal::File>),
 }
 
 impl From<tokio::fs::File> for RwFile {
@@ -16,12 +17,17 @@ impl From<yazi_sftp::fs::File> for RwFile {
 	fn from(f: yazi_sftp::fs::File) -> Self { Self::Sftp(Box::new(f)) }
 }
 
+impl From<super::opendal::File> for RwFile {
+	fn from(f: super::opendal::File) -> Self { Self::Opendal(Box::new(f)) }
+}
+
 impl RwFile {
 	// FIXME: path
 	pub async fn metadata(&self) -> io::Result<yazi_fs::cha::Cha> {
 		Ok(match self {
 			Self::Tokio(f) => yazi_fs::cha::Cha::new("// FIXME", f.metadata().await?),
 			Self::Sftp(f) => super::sftp::Cha::try_from(("// FIXME".as_bytes(), &f.fstat().await?))?.0,
+			Self::Opendal(f) => yazi_fs::cha::Cha::new("// FIXME", f.metadata().await?),
 		})
 	}
 
@@ -45,6 +51,19 @@ impl RwFile {
 					f.fsetstat(&attrs).await?;
 				}
 			}
+			Self::Opendal(f) => {
+				let (perm, times) = (attrs.try_into(), attrs.try_into());
+				if perm.is_err() && times.is_err() {
+					return Ok(());
+				}
+
+				let std = f.try_clone().await?.into_std().await;
+				tokio::task::spawn_blocking(move || {
+					perm.map(|p| std.set_permissions(p)).ok();
+					times.map(|t| std.set_times(t)).ok();
+				})
+				.await?;
+			}
 		}
 
 		Ok(())
@@ -56,6 +75,7 @@ impl RwFile {
 			Self::Sftp(f) => {
 				f.fsetstat(&yazi_sftp::fs::Attrs { size: Some(size), ..Default::default() }).await?
 			}
+			Self::Opendal(f) => f.set_len(size).await?,
 		})
 	}
 }
@@ -70,6 +90,7 @@ impl AsyncRead for RwFile {
 		match &mut *self {
 			Self::Tokio(f) => Pin::new(f).poll_read(cx, buf),
 			Self::Sftp(f) => Pin::new(f).poll_read(cx, buf),
+			Self::Opendal(f) => Pin::new(f).poll_read(cx, buf),
 		}
 	}
 }
@@ -80,6 +101,7 @@ impl AsyncSeek for RwFile {
 		match &mut *self {
 			Self::Tokio(f) => Pin::new(f).start_seek(position),
 			Self::Sftp(f) => Pin::new(f).start_seek(position),
+			Self::Opendal(f) => Pin::new(f).start_seek(position),
 		}
 	}
 
@@ -91,6 +113,7 @@ impl AsyncSeek for RwFile {
 		match &mut *self {
 			Self::Tokio(f) => Pin::new(f).poll_complete(cx),
 			Self::Sftp(f) => Pin::new(f).poll_complete(cx),
+			Self::Opendal(f) => Pin::new(f).poll_complete(cx),
 		}
 	}
 }
@@ -105,6 +128,7 @@ impl AsyncWrite for RwFile {
 		match &mut *self {
 			Self::Tokio(f) => Pin::new(f).poll_write(cx, buf),
 			Self::Sftp(f) => Pin::new(f).poll_write(cx, buf),
+			Self::Opendal(f) => Pin::new(f).poll_write(cx, buf),
 		}
 	}
 
@@ -116,6 +140,7 @@ impl AsyncWrite for RwFile {
 		match &mut *self {
 			Self::Tokio(f) => Pin::new(f).poll_flush(cx),
 			Self::Sftp(f) => Pin::new(f).poll_flush(cx),
+			Self::Opendal(f) => Pin::new(f).poll_flush(cx),
 		}
 	}
 
@@ -127,6 +152,7 @@ impl AsyncWrite for RwFile {
 		match &mut *self {
 			Self::Tokio(f) => Pin::new(f).poll_shutdown(cx),
 			Self::Sftp(f) => Pin::new(f).poll_shutdown(cx),
+			Self::Opendal(f) => Pin::new(f).poll_shutdown(cx),
 		}
 	}
 
@@ -139,6 +165,7 @@ impl AsyncWrite for RwFile {
 		match &mut *self {
 			Self::Tokio(f) => Pin::new(f).poll_write_vectored(cx, bufs),
 			Self::Sftp(f) => Pin::new(f).poll_write_vectored(cx, bufs),
+			Self::Opendal(f) => Pin::new(f).poll_write_vectored(cx, bufs),
 		}
 	}
 
@@ -147,6 +174,7 @@ impl AsyncWrite for RwFile {
 		match self {
 			Self::Tokio(f) => f.is_write_vectored(),
 			Self::Sftp(f) => f.is_write_vectored(),
+			Self::Opendal(f) => f.is_write_vectored(),
 		}
 	}
 }

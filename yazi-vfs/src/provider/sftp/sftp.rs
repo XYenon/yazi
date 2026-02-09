@@ -144,17 +144,17 @@ impl<'a> Provider for Sftp<'a> {
 		Ok(Cha::try_from((self.path.file_name().unwrap_or_default(), &attrs))?.0)
 	}
 
-	async fn new<'b>(url: Url<'b>) -> io::Result<Self::Me<'b>> {
-		match url {
-			Url::Regular(_) | Url::Search { .. } | Url::Archive { .. } => {
-				Err(io::Error::new(io::ErrorKind::InvalidInput, format!("Not a SFTP URL: {url:?}")))
-			}
-			Url::Sftp { loc, domain } => {
-				let (name, config) = Vfs::service::<&ServiceSftp>(domain).await?;
-				Ok(Self::Me { url, path: loc.as_inner(), name, config })
+		async fn new<'b>(url: Url<'b>) -> io::Result<Self::Me<'b>> {
+			match url {
+				Url::Regular(_) | Url::Search { .. } | Url::Archive { .. } | Url::Opendal { .. } => {
+					Err(io::Error::new(io::ErrorKind::InvalidInput, format!("Not a SFTP URL: {url:?}")))
+				}
+				Url::Sftp { loc, domain } => {
+					let (name, config) = Vfs::service::<&ServiceSftp>(domain).await?;
+					Ok(Self::Me { url, path: loc.as_inner(), name, config })
+				}
 			}
 		}
-	}
 
 	async fn read_dir(self) -> io::Result<Self::ReadDir> {
 		Ok(Self::ReadDir {

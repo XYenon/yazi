@@ -1,4 +1,4 @@
-use std::{io, mem, path::PathBuf};
+use std::{collections::HashMap, io, mem, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -8,6 +8,7 @@ use crate::normalize_path;
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum Service {
 	Sftp(ServiceSftp),
+	Opendal(ServiceOpendal),
 }
 
 impl TryFrom<&'static Service> for &'static ServiceSftp {
@@ -16,6 +17,18 @@ impl TryFrom<&'static Service> for &'static ServiceSftp {
 	fn try_from(value: &'static Service) -> Result<Self, Self::Error> {
 		match value {
 			Service::Sftp(p) => Ok(p),
+			Service::Opendal(_) => Err("expected `sftp`"),
+		}
+	}
+}
+
+impl TryFrom<&'static Service> for &'static ServiceOpendal {
+	type Error = &'static str;
+
+	fn try_from(value: &'static Service) -> Result<Self, Self::Error> {
+		match value {
+			Service::Sftp(_) => Err("expected `opendal`"),
+			Service::Opendal(p) => Ok(p),
 		}
 	}
 }
@@ -24,7 +37,30 @@ impl Service {
 	pub(super) fn reshape(&mut self) -> io::Result<()> {
 		match self {
 			Self::Sftp(p) => p.reshape(),
+			Self::Opendal(p) => p.reshape(),
 		}
+	}
+}
+
+// --- OpenDAL
+#[derive(Deserialize, Serialize)]
+pub struct ServiceOpendal {
+	/// A backend URI understood by OpenDAL, like:
+	/// - `s3://bucket/path?region=us-east-1`
+	/// - `webdav://example.com/remote.php/dav/files/user/`
+	/// - `fs:///tmp`
+	pub uri: String,
+	#[serde(default)]
+	pub options: HashMap<String, String>,
+}
+
+impl ServiceOpendal {
+	fn reshape(&mut self) -> io::Result<()> {
+		if self.uri.trim().is_empty() {
+			return Err(io::Error::other("OpenDAL uri must not be empty"));
+		}
+
+		Ok(())
 	}
 }
 

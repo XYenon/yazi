@@ -80,7 +80,7 @@ impl<'a> Provider for Local<'a> {
 	async fn new<'b>(url: Url<'b>) -> io::Result<Self::Me<'b>> {
 		match url {
 			Url::Regular(loc) | Url::Search { loc, .. } => Ok(Self::Me { url, path: loc.as_inner() }),
-			Url::Archive { .. } | Url::Sftp { .. } => {
+			Url::Archive { .. } | Url::Sftp { .. } | Url::Opendal { .. } => {
 				Err(io::Error::new(io::ErrorKind::InvalidInput, format!("Not a local URL: {url:?}")))
 			}
 		}
@@ -98,6 +98,7 @@ impl<'a> Provider for Local<'a> {
 				io::ErrorKind::InvalidInput,
 				format!("Not a local URL: {:?}", self.url),
 			))?,
+			SchemeKind::Opendal => Err(io::Error::new(io::ErrorKind::InvalidInput, format!("Not a local URL: {:?}", self.url)))?,
 		})
 	}
 

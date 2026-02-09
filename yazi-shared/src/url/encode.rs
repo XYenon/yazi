@@ -23,6 +23,9 @@ impl Display for Encode<'_> {
 			Url::Sftp { domain, .. } => {
 				write!(f, "sftp~://{}{}/{loc}", E::domain(domain), E::ports((*self).into()))
 			}
+			Url::Opendal { domain, .. } => {
+				write!(f, "opendal~://{}{}/{loc}", E::domain(domain), E::ports((*self).into()))
+			}
 		}
 	}
 }

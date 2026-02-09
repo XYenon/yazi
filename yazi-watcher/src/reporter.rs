@@ -22,7 +22,7 @@ impl Reporter {
 			match url.as_url().kind() {
 				SchemeKind::Regular | SchemeKind::Search => self.report_local(url),
 				SchemeKind::Archive => {}
-				SchemeKind::Sftp => self.report_remote(url),
+				SchemeKind::Sftp | SchemeKind::Opendal => self.report_remote(url),
 			}
 		}
 	}

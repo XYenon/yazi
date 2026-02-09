@@ -9,6 +9,7 @@ This directory contains the default configuration files for Yazi:
 - [`keymap-default.toml`][keymap-default]: Keybindings configuration
 - [`theme-dark.toml`][theme-dark]: Dark color scheme (loaded when your terminal is in dark mode)
 - [`theme-light.toml`][theme-light]: Light color scheme (loaded when your terminal is in light mode)
+- [`vfs-default.toml`][vfs-default]: VFS services configuration
 
 These files are already included with Yazi when you install the release, so you don't need to manually download or copy them to your Yazi configuration directory.
 
@@ -23,6 +24,9 @@ However, if you want to customize certain configurations:
 - Create a `theme.toml` in your config directory to override certain settings in [`theme-light.toml`][theme-light] and [`theme-dark.toml`][theme-dark], so either:
   - `~/.config/yazi/theme.toml` on Unix-like systems
   - `%AppData%\yazi\config\theme.toml` on Windows
+- Create a `vfs.toml` in your config directory to define VFS services (SFTP, OpenDAL), so either:
+  - `~/.config/yazi/vfs.toml` on Unix-like systems
+  - `%AppData%\yazi\config\vfs.toml` on Windows
 
 For the user's `theme.toml` file, you can only apply the same color scheme to both the light and dark themes.
 
@@ -33,6 +37,24 @@ If you want more granular control over colors, specify two different flavors for
 [keymap-default]: keymap-default.toml
 [theme-dark]: theme-dark.toml
 [theme-light]: theme-light.toml
+[vfs-default]: vfs-default.toml
+
+## VFS examples
+
+```toml
+[services]
+
+[services.my-s3]
+type = "opendal"
+uri = "s3://my-bucket/"
+
+[services.my-s3.options]
+region = "us-east-1"
+access_key_id = "<ACCESS_KEY_ID>"
+secret_access_key = "<SECRET_ACCESS_KEY>"
+```
+
+Navigate to `opendal://my-s3//` (root) or `opendal://my-s3//path/to/object`.
 
 ## Learn more
 

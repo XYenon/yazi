@@ -254,17 +254,18 @@ where
 	Providers::new(url.as_url()).await?.trash().await
 }
 
-pub fn try_absolute<'a, U>(url: U) -> Option<UrlCow<'a>>
-where
-	U: Into<UrlCow<'a>>,
-{
-	let url = url.into();
-	match url.as_url() {
-		Url::Regular(_) | Url::Search { .. } => yazi_fs::provider::local::try_absolute(url),
-		Url::Archive { .. } => None, // TODO
-		Url::Sftp { .. } => crate::provider::sftp::try_absolute(url),
+	pub fn try_absolute<'a, U>(url: U) -> Option<UrlCow<'a>>
+	where
+		U: Into<UrlCow<'a>>,
+	{
+		let url = url.into();
+		match url.as_url() {
+			Url::Regular(_) | Url::Search { .. } => yazi_fs::provider::local::try_absolute(url),
+			Url::Archive { .. } => None, // TODO
+			Url::Sftp { .. } => crate::provider::sftp::try_absolute(url),
+			Url::Opendal { .. } => crate::provider::opendal::try_absolute(url),
+		}
 	}
-}
 
 pub async fn write<U, C>(url: U, contents: C) -> io::Result<()>
 where

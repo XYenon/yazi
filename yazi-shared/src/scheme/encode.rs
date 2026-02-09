@@ -41,6 +41,9 @@ impl<'a> Encode<'a> {
 					SchemeKind::Sftp => {
 						w!(self.0.0.loc().name().is_some() as usize, self.0.0.loc().name().is_some() as usize)
 					}
+					SchemeKind::Opendal => {
+						w!(self.0.0.loc().name().is_some() as usize, self.0.0.loc().name().is_some() as usize)
+					}
 				}
 			}
 		}
@@ -58,6 +61,9 @@ impl Display for Encode<'_> {
 				write!(f, "archive://{}{}/", Self::domain(domain), self.ports())
 			}
 			Url::Sftp { domain, .. } => write!(f, "sftp://{}{}/", Self::domain(domain), self.ports()),
+			Url::Opendal { domain, .. } => {
+				write!(f, "opendal://{}{}/", Self::domain(domain), self.ports())
+			}
 		}
 	}
 }
