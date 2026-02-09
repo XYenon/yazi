@@ -15,11 +15,16 @@ impl DirReader for ReadDir {
 	type Entry = DirEntry;
 
 	async fn next(&mut self) -> io::Result<Option<Self::Entry>> {
-		Ok(self.entries.pop_front().map(|entry| DirEntry {
-			dir: self.dir.clone(),
-			op:  self.op.clone(),
-			entry,
-		}))
+		while let Some(entry) = self.entries.pop_front() {
+			// Some backends (or buggy S3-compatible services) may return an entry that maps to the
+			// operator root itself, producing an empty name. Skip it to avoid panics downstream.
+			if entry.name().trim_end_matches('/').is_empty() {
+				continue;
+			}
+
+			return Ok(Some(DirEntry { dir: self.dir.clone(), op: self.op.clone(), entry }));
+		}
+		Ok(None)
 	}
 }
 
