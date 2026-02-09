@@ -2,7 +2,7 @@ use std::{io, path::{Path, PathBuf}, str::FromStr, time::{Duration, SystemTime, 
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use yazi_fs::{FsUrl, cha::ChaType, provider::{DirReader, FileBuilder, FileHolder}};
-use yazi_shared::url::{AsUrl, UrlBuf};
+use yazi_shared::{loc::LocBuf, pool::InternStr, scheme::SchemeKind, url::{AsUrl, UrlBuf}};
 
 fn init_ctx() -> (&'static PathBuf, &'static PathBuf) {
 	static INIT: std::sync::OnceLock<(PathBuf, PathBuf)> = std::sync::OnceLock::new();
@@ -205,6 +205,18 @@ async fn opendal_fs_full() {
 	let mut buf = Vec::new();
 	f.read_to_end(&mut buf).await.unwrap();
 	assert_eq!(buf, b"casefold");
+
+	// Non-UTF8 names should fail fast instead of lossy remote key conversion.
+	let bad_loc = LocBuf::<typed_path::UnixPathBuf>::saturated(
+		typed_path::UnixPathBuf::from(vec![b'/', 0xff, b'a']),
+		SchemeKind::Opendal,
+	);
+	let bad_url = UrlBuf::Opendal { loc: bad_loc, domain: "testfs".intern() };
+	let err = match yazi_vfs::provider::metadata(&bad_url).await {
+		Ok(_) => panic!("expected InvalidInput for non-UTF8 OpenDAL path"),
+		Err(e) => e,
+	};
+	assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
 
 	// List root directory.
 	let root_url = UrlBuf::from_str(&format!("opendal://testfs//{base}/")).unwrap();

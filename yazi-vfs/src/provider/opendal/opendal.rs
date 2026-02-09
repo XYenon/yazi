@@ -39,11 +39,7 @@ pub struct Opendal<'a> {
 }
 
 impl<'a> Opendal<'a> {
-	fn key(&self) -> String {
-		let mut key = String::from_utf8_lossy(self.path.as_bytes()).into_owned();
-		key = key.trim_start_matches('/').to_owned();
-		key
-	}
+	fn key(&self) -> io::Result<String> { super::key_from_unix(self.path) }
 
 	async fn op(&self) -> io::Result<::opendal::Operator> {
 		let mut ops = super::OPS.lock();
@@ -107,11 +103,10 @@ impl<'a> Provider for Opendal<'a> {
 	where
 		P: AsPath,
 	{
-		let to = to.as_path().as_unix()?;
-		let to = String::from_utf8_lossy(to.as_bytes()).trim_start_matches('/').to_owned();
+		let to = super::key_from_unix(to.as_path().as_unix()?)?;
 
 		let op = self.op().await?;
-		let from = self.key();
+		let from = self.key()?;
 		op.copy(&from, &to).await.map_err(io::Error::from)?;
 		Ok(self.metadata().await?.len)
 	}
@@ -132,7 +127,7 @@ impl<'a> Provider for Opendal<'a> {
 
 	async fn create_dir(&self) -> io::Result<()> {
 		let op = self.op().await?;
-		let mut key = self.key();
+		let mut key = self.key()?;
 		if !key.is_empty() && !key.ends_with('/') {
 			key.push('/');
 		}
@@ -153,7 +148,7 @@ impl<'a> Provider for Opendal<'a> {
 
 	async fn metadata(&self) -> io::Result<Cha> {
 		let op = self.op().await?;
-		let key = self.key();
+		let key = self.key()?;
 
 		let meta = match op.stat(&key).await {
 			Ok(m) => m,
@@ -178,7 +173,7 @@ impl<'a> Provider for Opendal<'a> {
 
 	async fn read_dir(self) -> io::Result<Self::ReadDir> {
 		let op = self.op().await?;
-		let mut key = self.key();
+		let mut key = self.key()?;
 		if !key.is_empty() && !key.ends_with('/') {
 			key.push('/');
 		}
@@ -194,25 +189,22 @@ impl<'a> Provider for Opendal<'a> {
 
 	async fn remove_dir(&self) -> io::Result<()> {
 		let op = self.op().await?;
-		let mut key = self.key();
+		let mut key = self.key()?;
 		if !key.is_empty() && !key.ends_with('/') {
 			key.push('/');
 		}
 		op.delete(&key).await.map_err(io::Error::from)
 	}
 
-	async fn remove_file(&self) -> io::Result<()> {
-		self.op().await?.delete(&self.key()).await.map_err(io::Error::from)
-	}
+	async fn remove_file(&self) -> io::Result<()> { self.op().await?.delete(&self.key()?).await.map_err(io::Error::from) }
 
 	async fn rename<P>(&self, to: P) -> io::Result<()>
 	where
 		P: AsPath,
 	{
-		let to = to.as_path().as_unix()?;
-		let to = String::from_utf8_lossy(to.as_bytes()).trim_start_matches('/').to_owned();
+		let to = super::key_from_unix(to.as_path().as_unix()?)?;
 
-		self.op().await?.rename(&self.key(), &to).await.map_err(io::Error::from)
+		self.op().await?.rename(&self.key()?, &to).await.map_err(io::Error::from)
 	}
 
 	async fn symlink<S, F>(&self, _original: S, _is_dir: F) -> io::Result<()>

@@ -58,8 +58,7 @@ impl FileBuilder for Gate {
 			}
 		};
 
-		let mut key = String::from_utf8_lossy(path.as_bytes()).into_owned();
-		key = key.trim_start_matches('/').to_owned();
+		let key = super::key_from_unix(path)?;
 
 		let cache = url.cache().ok_or_else(|| io::Error::other("OpenDAL URL has no cache path"))?;
 		if let Some(parent) = cache.parent() {
