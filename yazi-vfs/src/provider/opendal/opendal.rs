@@ -190,8 +190,9 @@ impl<'a> Provider for Opendal<'a> {
 		}
 
 		let entries = op.list_with(&key).await.map_err(io::Error::from)?;
+		let entries = super::read_dir::normalize_entries(&key, entries);
 
-		Ok(Self::ReadDir { dir: Arc::new(self.url.to_owned()), op, entries: entries.into() })
+		Ok(Self::ReadDir { dir: Arc::new(self.url.to_owned()), op, entries })
 	}
 
 	async fn read_link(&self) -> io::Result<PathBufDyn> {

@@ -1,8 +1,22 @@
-use std::{io, path::{Path, PathBuf}, str::FromStr, time::{Duration, SystemTime, UNIX_EPOCH}};
+use std::{
+	io,
+	path::{Path, PathBuf},
+	str::FromStr,
+	time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use yazi_fs::{FsUrl, cha::ChaType, provider::{DirReader, FileBuilder, FileHolder}};
-use yazi_shared::{loc::LocBuf, pool::InternStr, scheme::SchemeKind, url::{AsUrl, UrlBuf}};
+use yazi_fs::{
+	FsUrl,
+	cha::ChaType,
+	provider::{DirReader, FileBuilder, FileHolder},
+};
+use yazi_shared::{
+	loc::LocBuf,
+	pool::InternStr,
+	scheme::SchemeKind,
+	url::{AsUrl, UrlBuf},
+};
 
 fn init_ctx() -> (&'static PathBuf, &'static PathBuf) {
 	static INIT: std::sync::OnceLock<(PathBuf, PathBuf)> = std::sync::OnceLock::new();
@@ -75,7 +89,8 @@ async fn opendal_fs_full() {
 	let file_url = UrlBuf::from_str(&format!("opendal://testfs//{base}/hello.txt")).unwrap();
 	let file_url2 = UrlBuf::from_str(&format!("opendal://testfs//{base}/drop.txt")).unwrap();
 	let file_url3 = UrlBuf::from_str(&format!("opendal://testfs//{base}/new.txt")).unwrap();
-	let file_url3_renamed = UrlBuf::from_str(&format!("opendal://testfs//{base}/renamed.txt")).unwrap();
+	let file_url3_renamed =
+		UrlBuf::from_str(&format!("opendal://testfs//{base}/renamed.txt")).unwrap();
 	let file_url3_copied = UrlBuf::from_str(&format!("opendal://testfs//{base}/copied.txt")).unwrap();
 
 	let empty_dir_url = UrlBuf::from_str(&format!("opendal://testfs//{base}/empty/")).unwrap();
@@ -141,30 +156,34 @@ async fn opendal_fs_full() {
 
 	// Truncate skips download and uploads truncated contents.
 	let _ = tokio::fs::remove_file(file_url.as_url().cache().unwrap()).await;
-	let mut f = yazi_vfs::provider::Gate::default()
-		.write(true)
-		.truncate(true)
-		.open(&file_url)
-		.await
-		.unwrap();
+	let mut f =
+		yazi_vfs::provider::Gate::default().write(true).truncate(true).open(&file_url).await.unwrap();
 	f.write_all(b"x").await.unwrap();
 	f.shutdown().await.unwrap();
 	wait_remote_bytes(remote_root, &format!("{base}/hello.txt"), b"x").await;
 
 	// rename and copy (file).
 	yazi_vfs::provider::rename(&file_url3, &file_url3_renamed).await.unwrap();
-	assert!(!tokio::fs::try_exists(remote_root.join(format!("{base}/new.txt"))).await.unwrap_or(false));
+	assert!(
+		!tokio::fs::try_exists(remote_root.join(format!("{base}/new.txt"))).await.unwrap_or(false)
+	);
 	wait_remote_bytes(remote_root, &format!("{base}/renamed.txt"), b"new").await;
 
-	let copied = yazi_vfs::provider::copy(&file_url3_renamed, &file_url3_copied, yazi_fs::provider::Attrs::default())
-		.await
-		.unwrap();
+	let copied = yazi_vfs::provider::copy(
+		&file_url3_renamed,
+		&file_url3_copied,
+		yazi_fs::provider::Attrs::default(),
+	)
+	.await
+	.unwrap();
 	assert_eq!(copied, 3);
 	wait_remote_bytes(remote_root, &format!("{base}/copied.txt"), b"new").await;
 
 	// remove_file
 	yazi_vfs::provider::remove_file(&file_url3_copied).await.unwrap();
-	assert!(!tokio::fs::try_exists(remote_root.join(format!("{base}/copied.txt"))).await.unwrap_or(false));
+	assert!(
+		!tokio::fs::try_exists(remote_root.join(format!("{base}/copied.txt"))).await.unwrap_or(false)
+	);
 
 	// create_dir / remove_dir (empty dir).
 	yazi_vfs::provider::create_dir(&empty_dir_url).await.unwrap();
@@ -185,9 +204,11 @@ async fn opendal_fs_full() {
 		f.shutdown().await.unwrap();
 	}
 	wait_remote_bytes(remote_root, &format!("{base}/a/b/file.txt"), b"deep").await;
-	yazi_vfs::provider::remove_dir_all(&UrlBuf::from_str(&format!("opendal://testfs//{base}/a/")).unwrap())
-		.await
-		.unwrap();
+	yazi_vfs::provider::remove_dir_all(
+		&UrlBuf::from_str(&format!("opendal://testfs//{base}/a/")).unwrap(),
+	)
+	.await
+	.unwrap();
 	assert!(!tokio::fs::try_exists(remote_root.join(format!("{base}/a"))).await.unwrap_or(false));
 
 	// casefold: resolve path by scanning parent directory.
