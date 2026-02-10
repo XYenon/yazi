@@ -1,5 +1,6 @@
 use std::{collections::{HashMap, VecDeque}, io, sync::Arc};
 
+use futures::TryStreamExt;
 use yazi_fs::provider::{DirReader, FileHolder};
 use yazi_shared::{path::PathBufDyn, strand::{StrandBuf, StrandCow}, url::{UrlBuf, UrlLike}};
 
@@ -13,11 +14,14 @@ pub(super) struct ListedEntry {
 	pub(super) synth: bool,
 }
 
-pub(super) fn normalize_entries(prefix: &str, entries: Vec<::opendal::Entry>) -> VecDeque<ListedEntry> {
-	let mut out: Vec<ListedEntry> = Vec::with_capacity(entries.len());
-	let mut index: HashMap<String, usize> = HashMap::with_capacity(entries.len());
+pub(super) async fn normalize_entries(
+	prefix: &str,
+	mut lister: ::opendal::Lister,
+) -> io::Result<VecDeque<ListedEntry>> {
+	let mut out: Vec<ListedEntry> = Vec::new();
+	let mut index: HashMap<String, usize> = HashMap::new();
 
-	for entry in entries {
+	while let Some(entry) = lister.try_next().await.map_err(io::Error::from)? {
 		let (path, meta) = entry.into_parts();
 
 		if !prefix.is_empty() && !path.starts_with(prefix) {
@@ -57,7 +61,7 @@ pub(super) fn normalize_entries(prefix: &str, entries: Vec<::opendal::Entry>) ->
 		}
 	}
 
-	out.into()
+	Ok(out.into())
 }
 
 pub struct ReadDir {

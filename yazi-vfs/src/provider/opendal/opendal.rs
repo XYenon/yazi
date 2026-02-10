@@ -181,8 +181,8 @@ impl<'a> Provider for Opendal<'a> {
 			key.push('/');
 		}
 
-		let entries = op.list_with(&key).await.map_err(io::Error::from)?;
-		let entries = super::read_dir::normalize_entries(&key, entries);
+		let lister = op.lister_with(&key).await.map_err(io::Error::from)?;
+		let entries = super::read_dir::normalize_entries(&key, lister).await?;
 
 		Ok(Self::ReadDir { dir: Arc::new(self.url.to_owned()), op, entries })
 	}

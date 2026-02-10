@@ -25,6 +25,9 @@ lto           = false
 [profile.dev.package."*"]
 debug = false
 
+[profile.dev.package.opendal]
+debug-assertions = false
+
 [workspace.dependencies]
 ansi-to-tui         = "8.0.1"
 anyhow              = "1.0.101"
