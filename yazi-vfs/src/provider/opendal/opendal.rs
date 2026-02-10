@@ -14,8 +14,19 @@ pub fn cha_from_meta(url: &UrlBuf, meta: &::opendal::Metadata) -> Cha {
 	}
 
 	let mode = match meta.mode() {
-		::opendal::EntryMode::FILE => ChaMode::T_FILE,
-		::opendal::EntryMode::DIR => ChaMode::T_DIR,
+		::opendal::EntryMode::FILE => {
+			ChaMode::T_FILE | ChaMode::U_READ | ChaMode::U_WRITE | ChaMode::G_READ | ChaMode::O_READ
+		}
+		::opendal::EntryMode::DIR => {
+			ChaMode::T_DIR
+				| ChaMode::U_READ
+				| ChaMode::U_WRITE
+				| ChaMode::U_EXEC
+				| ChaMode::G_READ
+				| ChaMode::G_EXEC
+				| ChaMode::O_READ
+				| ChaMode::O_EXEC
+		}
 		::opendal::EntryMode::Unknown => ChaMode::empty(),
 	};
 

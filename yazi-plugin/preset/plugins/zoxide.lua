@@ -16,10 +16,14 @@ function M:setup(opts)
 		ps.sub(
 			"cd",
 			function()
+				local cwd = cx.active.current.cwd
+				if not cwd.is_regular then
+					return
+				end
 				ya.emit("shell", {
 					cwd = fs.cwd(),
 					orphan = true,
-					"zoxide add " .. ya.quote(tostring(cx.active.current.cwd)):gsub("%%", "%%%%"),
+					"zoxide add " .. ya.quote(tostring(cwd)):gsub("%%", "%%%%"),
 				})
 			end
 		)

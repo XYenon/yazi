@@ -99,6 +99,17 @@ impl FileBuilder for Gate {
 			return Err(io::Error::from(io::ErrorKind::NotFound));
 		}
 
+		#[cfg(unix)]
+		if tokio::fs::try_exists(&cache).await.unwrap_or(false) {
+			use std::os::unix::fs::PermissionsExt;
+			if let Ok(meta) = tokio::fs::metadata(&cache).await {
+				let perm = meta.permissions();
+				if perm.mode() & 0o600 != 0o600 {
+					tokio::fs::set_permissions(&cache, std::fs::Permissions::from_mode(0o644)).await.ok();
+				}
+			}
+		}
+
 		let mut opts = tokio::fs::OpenOptions::new();
 		opts.read(self.0.read);
 		opts.write(self.0.write);
