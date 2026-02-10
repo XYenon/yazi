@@ -53,15 +53,7 @@ impl<'a> Opendal<'a> {
 	fn key(&self) -> io::Result<String> { super::key_from_unix(self.path) }
 
 	async fn op(&self) -> io::Result<::opendal::Operator> {
-		let mut ops = super::OPS.lock();
-		if let Some(op) = ops.get(self.name).cloned() {
-			return Ok(op);
-		}
-
-		let extra = self.config.options.iter().map(|(k, v)| (k.as_str(), v.as_str()));
-		let op = ::opendal::Operator::from_uri((self.config.uri.as_str(), extra)).map_err(io::Error::from)?;
-		ops.insert(self.name, op.clone());
-		Ok(op)
+		super::operator(self.name, self.config)
 	}
 }
 

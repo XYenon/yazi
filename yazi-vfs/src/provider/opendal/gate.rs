@@ -46,18 +46,7 @@ impl FileBuilder for Gate {
 			_ => Err(io::Error::new(io::ErrorKind::InvalidInput, format!("Not an OpenDAL URL: {url:?}")))?,
 		};
 
-		let op = {
-			let mut ops = super::OPS.lock();
-			if let Some(op) = ops.get(name).cloned() {
-				op
-			} else {
-				let extra = config.options.iter().map(|(k, v)| (k.as_str(), v.as_str()));
-				let op = ::opendal::Operator::from_uri((config.uri.as_str(), extra)).map_err(io::Error::from)?;
-				ops.insert(name, op.clone());
-				op
-			}
-		};
-
+		let op = super::operator(name, config)?;
 		let key = super::key_from_unix(path)?;
 
 		let cache = url.cache().ok_or_else(|| io::Error::other("OpenDAL URL has no cache path"))?;

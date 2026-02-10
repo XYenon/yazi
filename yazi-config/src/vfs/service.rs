@@ -45,19 +45,15 @@ impl Service {
 // --- OpenDAL
 #[derive(Deserialize, Serialize)]
 pub struct ServiceOpendal {
-	/// A backend URI understood by OpenDAL, like:
-	/// - `s3://bucket/path?region=us-east-1`
-	/// - `webdav://example.com/remote.php/dav/files/user/`
-	/// - `fs:///tmp`
-	pub uri: String,
-	#[serde(default)]
+	pub scheme: String,
+	#[serde(flatten)]
 	pub options: HashMap<String, String>,
 }
 
 impl ServiceOpendal {
 	fn reshape(&mut self) -> io::Result<()> {
-		if self.uri.trim().is_empty() {
-			return Err(io::Error::other("OpenDAL uri must not be empty"));
+		if self.scheme.trim().is_empty() {
+			return Err(io::Error::other("OpenDAL scheme must not be empty"));
 		}
 
 		Ok(())

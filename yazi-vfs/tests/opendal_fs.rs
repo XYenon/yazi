@@ -45,12 +45,13 @@ fn init_ctx() -> (&'static PathBuf, &'static PathBuf) {
 				r#"[services]
 
 [services.testfs]
-type = "opendal"
-uri = "{uri}"
+type   = "opendal"
+scheme = "fs"
+root   = "{uri}"
 
 [services.memfs]
-type = "opendal"
-uri = "memory://"
+type   = "opendal"
+scheme = "memory"
 "#
 			),
 		)
