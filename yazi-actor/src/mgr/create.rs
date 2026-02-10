@@ -1,4 +1,5 @@
 use anyhow::{Result, bail};
+use tokio::io::AsyncWriteExt;
 use yazi_config::popup::{ConfirmCfg, InputCfg};
 use yazi_fs::{File, FilesOp};
 use yazi_macro::{ok_or_not_found, succ};
@@ -55,11 +56,11 @@ impl Create {
 		{
 			ok_or_not_found!(provider::remove_file(&new).await);
 			FilesOp::Deleting(parent.into(), [urn.into()].into()).emit();
-			provider::create(&new).await?;
+			provider::create(&new).await?.shutdown().await?;
 		} else if let Some(parent) = new.parent() {
 			provider::create_dir_all(parent).await.ok();
 			ok_or_not_found!(provider::remove_file(&new).await);
-			provider::create(&new).await?;
+			provider::create(&new).await?.shutdown().await?;
 		} else {
 			bail!("Cannot create file at root");
 		}
