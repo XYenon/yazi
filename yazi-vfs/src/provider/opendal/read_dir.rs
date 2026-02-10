@@ -99,6 +99,10 @@ impl FileHolder for DirEntry {
 	}
 
 	async fn metadata(&self) -> io::Result<yazi_fs::cha::Cha> {
+		if self.entry.synth {
+			return Ok(cha_from_meta(&self.url(), &self.entry.meta));
+		}
+
 		let meta = self.op.stat(&self.entry.path).await.map_err(io::Error::from)?;
 		Ok(cha_from_meta(&self.url(), &meta))
 	}

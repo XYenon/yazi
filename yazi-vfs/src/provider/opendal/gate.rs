@@ -79,7 +79,16 @@ impl FileBuilder for Gate {
 			return Err(io::Error::from(io::ErrorKind::AlreadyExists));
 		}
 
-		let cache_exists = tokio::fs::try_exists(&cache).await.unwrap_or(false);
+		let mut cache_exists = tokio::fs::try_exists(&cache).await.unwrap_or(false);
+		if self.0.create_new && !remote_exists && cache_exists {
+			// `create_new` should fail only when the remote already exists.
+			// A stale cache file may remain after remote deletion; remove it so we can create a new file.
+			match tokio::fs::remove_file(&cache).await {
+				Ok(()) => cache_exists = false,
+				Err(e) if e.kind() == io::ErrorKind::NotFound => cache_exists = false,
+				Err(e) => return Err(e),
+			}
+		}
 		let want_local_source = self.0.read || self.0.append || (self.0.write && !self.0.truncate);
 
 		if want_local_source && !cache_exists && remote_exists {

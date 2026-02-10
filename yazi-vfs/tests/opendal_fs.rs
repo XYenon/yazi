@@ -47,6 +47,10 @@ fn init_ctx() -> (&'static PathBuf, &'static PathBuf) {
 [services.testfs]
 type = "opendal"
 uri = "{uri}"
+
+[services.memfs]
+type = "opendal"
+uri = "memory://"
 "#
 			),
 		)
@@ -132,6 +136,30 @@ async fn opendal_fs_full() {
 		Err(e) => e,
 	};
 	assert_eq!(err.kind(), io::ErrorKind::AlreadyExists);
+
+	// create_new shouldn't be blocked by a stale local cache file when the remote is missing.
+	let stale_url = UrlBuf::from_str(&format!("opendal://testfs//{base}/stale.txt")).unwrap();
+	{
+		let mut f = yazi_vfs::provider::create(&stale_url).await.unwrap();
+		f.write_all(b"stale").await.unwrap();
+		f.shutdown().await.unwrap();
+	}
+	wait_remote_bytes(remote_root, &format!("{base}/stale.txt"), b"stale").await;
+	yazi_vfs::provider::remove_file(&stale_url).await.unwrap();
+	wait_until(Duration::from_secs(2), || !remote_root.join(format!("{base}/stale.txt")).exists())
+		.await;
+
+	let cache_path = stale_url.as_url().cache().unwrap();
+	if !tokio::fs::try_exists(&cache_path).await.unwrap_or(false) {
+		tokio::fs::File::create(&cache_path).await.unwrap();
+	}
+
+	{
+		let mut f = yazi_vfs::provider::create_new(&stale_url).await.unwrap();
+		f.write_all(b"fresh").await.unwrap();
+		f.shutdown().await.unwrap();
+	}
+	wait_remote_bytes(remote_root, &format!("{base}/stale.txt"), b"fresh").await;
 
 	// open: NotFound when remote missing and cache missing.
 	let missing_url = UrlBuf::from_str(&format!("opendal://testfs//{base}/missing.txt")).unwrap();
@@ -238,6 +266,29 @@ async fn opendal_fs_full() {
 		Err(e) => e,
 	};
 	assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
+
+	// Synthesized directory entries shouldn't require a backing "directory marker" object.
+	let mem_base = uniq("opendal-mem-");
+	let mem_deep =
+		UrlBuf::from_str(&format!("opendal://memfs//{mem_base}/dir1/dir2/file.txt")).unwrap();
+	{
+		let mut f = yazi_vfs::provider::create(&mem_deep).await.unwrap();
+		f.write_all(b"x").await.unwrap();
+		f.shutdown().await.unwrap();
+	}
+
+	let mem_root = UrlBuf::from_str(&format!("opendal://memfs//{mem_base}/")).unwrap();
+	let mut rd = yazi_vfs::provider::read_dir(&mem_root).await.unwrap();
+	let mut dir1 = None;
+	while let Some(ent) = rd.next().await.unwrap() {
+		if ent.name().into_string_lossy() == "dir1" {
+			dir1 = Some(ent);
+			break;
+		}
+	}
+	let dir1 = dir1.expect("expected synthesized `dir1/` entry to be listed");
+	let cha = dir1.metadata().await.unwrap();
+	assert_eq!(**cha, ChaType::Dir);
 
 	// List root directory.
 	let root_url = UrlBuf::from_str(&format!("opendal://testfs//{base}/")).unwrap();

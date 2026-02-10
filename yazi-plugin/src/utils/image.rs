@@ -7,7 +7,7 @@ use yazi_shared::url::{AsUrl, UrlLike};
 use super::Utils;
 
 async fn ensure_cached(url: &UrlRef) -> mlua::Result<()> {
-	if !url.as_url().kind().is_local() {
+	if url.as_url().kind().is_remote() {
 		drop(
 			yazi_vfs::provider::open(url.as_url())
 				.await
