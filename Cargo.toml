@@ -45,7 +45,7 @@ libc                = "0.2.180"
 lru                 = "0.16.3"
 mlua                = { version = "0.11.6", features = [ "anyhow", "async", "error-send", "lua55", "macros", "serde" ] }
 objc2               = "0.6.3"
-opendal             = { version = "0.55.0", features = [ "services-azblob", "services-fs", "services-gcs", "services-oss", "services-s3", "services-webdav" ] }
+opendal             = { version = "0.55.0", features = [ "services-aliyun-drive", "services-azblob", "services-b2", "services-cos", "services-dropbox", "services-fs", "services-ftp", "services-gcs", "services-gdrive", "services-http", "services-koofr", "services-obs", "services-onedrive", "services-oss", "services-pcloud", "services-s3", "services-seafile", "services-sftp", "services-swift", "services-upyun", "services-vercel-blob", "services-webdav", "services-yandex-disk" ] }
 ordered-float       = { version = "5.1.0", features = [ "serde" ] }
 parking_lot         = "0.12.5"
 paste               = "1.0.15"
