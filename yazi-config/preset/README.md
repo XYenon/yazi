@@ -46,9 +46,9 @@ If you want more granular control over colors, specify two different flavors for
 
 [services.my-s3]
 type = "opendal"
-uri = "s3://my-bucket/"
-
-[services.my-s3.options]
+scheme = "s3"
+bucket = "my-bucket"
+root = "/"
 region = "us-east-1"
 access_key_id = "<ACCESS_KEY_ID>"
 secret_access_key = "<SECRET_ACCESS_KEY>"

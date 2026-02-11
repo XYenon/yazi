@@ -38,7 +38,7 @@ fn init_ctx() -> (&'static PathBuf, &'static PathBuf) {
 			std::env::set_var("YAZI_CONFIG_HOME", &config_dir);
 		}
 
-		let uri = format!("fs://{}", remote_root.display());
+		let root = remote_root.display();
 		std::fs::write(
 			config_dir.join("vfs.toml"),
 			format!(
@@ -47,7 +47,7 @@ fn init_ctx() -> (&'static PathBuf, &'static PathBuf) {
 [services.testfs]
 type   = "opendal"
 scheme = "fs"
-root   = "{uri}"
+root   = "{root}"
 
 [services.memfs]
 type   = "opendal"
